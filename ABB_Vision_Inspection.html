@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vision-Based Robotic Sorting System</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@700;900&family=Barlow:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #060a10;
+    --panel: #0b1220;
+    --border: #1a2d4a;
+    --accent1: #00d4ff;
+    --accent2: #ff6b2b;
+    --accent3: #39ff8f;
+    --accent4: #f0c040;
+    --text: #cde4f5;
+    --dim: #4a6a85;
+    --mono: 'Share Tech Mono', monospace;
+    --head: 'Barlow Condensed', sans-serif;
+    --body: 'Barlow', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--body);
+    width: 100%;
+    overflow-x: hidden;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  .wrapper { padding: 20px 16px 28px; max-width: 900px; margin: 0 auto; }
+
+  @media print {
+    html, body {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+      background: #060a10 !important;
+      background-color: #060a10 !important;
+    }
+    .code-panel, .sig-group, .flow-node, .status-bar {
+      background-color: #0b1220 !important;
+      border-color: #1a2d4a !important;
+    }
+    .scanline { display: none; }
+    * { animation: none !important; }
+  }
+
+  /* ── HEADER ── */
+  .header { margin-bottom: 18px; }
+  .tag {
+    font-family: var(--mono); font-size: 9px; color: var(--accent1);
+    letter-spacing: 3px; text-transform: uppercase; margin-bottom: 6px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .tag::before { content:''; display:inline-block; width:20px; height:1px; background:var(--accent1); }
+  h1 {
+    font-family: var(--head); font-size: clamp(28px, 6vw, 48px);
+    font-weight: 900; line-height: 0.95; text-transform: uppercase;
+    color: #fff; letter-spacing: -1px; margin-bottom: 8px;
+  }
+  h1 span { color: var(--accent1); }
+  .subtitle { font-family: var(--mono); font-size: 9px; color: var(--dim); letter-spacing: 1px; }
+
+  .badge-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .badge {
+    font-family: var(--mono); font-size: 9px; padding: 3px 8px; border: 1px solid;
+  }
+  .badge-abb  { border-color: var(--accent2); color: var(--accent2); }
+  .badge-plc  { border-color: var(--accent3); color: var(--accent3); }
+  .badge-vis  { border-color: var(--accent1); color: var(--accent1); }
+  .badge-vfd  { border-color: var(--accent4); color: var(--accent4); }
+
+  /* ── STATUS BAR ── */
+  .status-bar {
+    display: flex; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 18px;
+    padding: 8px 12px; background: rgba(0,212,255,0.04);
+    border: 1px solid rgba(0,212,255,0.12);
+  }
+  .status-item { display: flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 9px; color: var(--dim); }
+  .sdot { width: 6px; height: 6px; border-radius: 50%; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .dot-g { background: var(--accent3); animation: pulse 1.8s ease-in-out infinite; }
+  .dot-b { background: var(--accent1); animation: pulse 2.2s ease-in-out infinite; }
+  .dot-o { background: var(--accent2); animation: pulse 2s ease-in-out infinite; }
+  .sval { color: #fff; }
+
+  /* ── SECTION LABEL ── */
+  .sec {
+    font-family: var(--mono); font-size: 9px; color: var(--accent1);
+    letter-spacing: 3px; text-transform: uppercase; margin-bottom: 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .sec::after { content:''; flex:1; height:1px; background: linear-gradient(to right, var(--border), transparent); }
+
+  /* ── PROCESS FLOW ── */
+  .flow-wrap { overflow-x: auto; margin-bottom: 18px; padding-bottom: 4px; }
+  .flow-row { display: flex; align-items: stretch; gap: 0; min-width: 480px; }
+  .flow-node {
+    flex: 1; background: var(--panel); border: 1px solid var(--border);
+    padding: 10px 8px; text-align: center; position: relative;
+  }
+  .flow-node::before {
+    content: attr(data-num); position: absolute; top: -9px; left: 50%; transform: translateX(-50%);
+    font-family: var(--mono); font-size: 7px; background: var(--bg); padding: 0 4px; color: var(--accent1);
+  }
+  .flow-node.c1 { border-color: var(--accent1); }
+  .flow-node.c2 { border-color: var(--accent2); }
+  .flow-node.c3 { border-color: var(--accent3); }
+  .flow-node.c4 { border-color: var(--accent4); }
+  .flow-node.c5 { border-color: #a855f7; }
+  .flow-icon { font-size: 18px; display: block; margin-bottom: 3px; }
+  .flow-title { font-family: var(--head); font-size: 11px; font-weight: 700; text-transform: uppercase; color: #fff; }
+  .flow-sub { font-family: var(--mono); font-size: 7px; color: var(--dim); margin-top: 2px; line-height: 1.4; }
+  .flow-arrow { width: 20px; display: flex; align-items: center; justify-content: center; color: var(--accent1); font-size: 12px; flex-shrink: 0; }
+
+  /* ── CODE PANELS ── */
+  .code-panel { background: var(--panel); border: 1px solid var(--border); margin-bottom: 14px; }
+  .code-panel.ladder { border-top: 2px solid var(--accent2); }
+  .code-panel.rapid  { border-top: 2px solid var(--accent3); }
+  .code-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 7px 12px; border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.02);
+  }
+  .code-title { font-family: var(--head); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+  .ladder .code-title { color: var(--accent2); }
+  .rapid  .code-title { color: var(--accent3); }
+  .code-lang { font-family: var(--mono); font-size: 8px; padding: 2px 6px; border: 1px solid var(--border); color: var(--dim); }
+  .code-body { padding: 12px; overflow-x: auto; }
+
+  /* ── LADDER ── */
+  .ladder-diagram { display: flex; flex-direction: column; gap: 4px; min-width: 400px; }
+  .rung-comment { font-family: var(--mono); font-size: 8px; color: var(--dim); font-style: italic; margin-bottom: 2px; }
+  .rung { display: flex; align-items: center; margin-bottom: 18px; }
+  .rung-label { font-family: var(--mono); font-size: 8px; color: var(--dim); width: 32px; flex-shrink:0; text-align:right; padding-right:5px; }
+  .rung-rail { display: flex; align-items: center; flex: 1; height: 28px; position: relative; }
+  .rung-rail::before, .rung-rail::after {
+    content:''; position:absolute; top:50%; transform:translateY(-50%);
+    width:3px; height:28px; background:var(--accent2); opacity:.7;
+  }
+  .rung-rail::before { left:0; } .rung-rail::after { right:0; }
+  .rail-line { position:absolute; top:50%; left:3px; right:3px; height:1px; background:var(--accent2); opacity:.25; }
+  .wire { flex:1; height:1px; background:var(--accent2); opacity:.6; min-width:6px; }
+  .sym { position:relative; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .sym svg { width:38px; height:26px; }
+  .sym-label { position:absolute; top:-13px; left:50%; transform:translateX(-50%); font-family:var(--mono); font-size:7px; white-space:nowrap; color:var(--text); }
+  .sym-addr  { position:absolute; bottom:-13px; left:50%; transform:translateX(-50%); font-family:var(--mono); font-size:7px; white-space:nowrap; color:var(--dim); }
+  .key-note { font-family:var(--mono); font-size:7.5px; color:var(--dim); margin-top:6px; padding-top:6px; border-top:1px solid var(--border); }
+
+  /* ── RAPID ── */
+  pre { font-family: var(--mono); font-size: 10px; line-height: 1.65; white-space: pre; }
+  .kw  { color: var(--accent1); }
+  .fn  { color: var(--accent3); }
+  .str { color: var(--accent4); }
+  .cm  { color: var(--dim); font-style:italic; }
+  .num { color: var(--accent2); }
+  .var { color: #e0aaff; }
+  .type{ color: #7dd3fc; }
+
+  /* ── SIGNAL MAP ── */
+  .signal-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin-bottom: 18px; }
+  .sig-group { background: var(--panel); border: 1px solid var(--border); padding: 10px 12px; }
+  .sig-group-title { font-family: var(--head); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; padding-bottom: 5px; border-bottom: 1px solid var(--border); }
+  .sig-group.inputs  .sig-group-title { color: var(--accent1); }
+  .sig-group.outputs .sig-group-title { color: var(--accent3); }
+  .sig-group.comms   .sig-group-title { color: var(--accent4); }
+  .sig-item { display:flex; align-items:center; gap:5px; margin-bottom:4px; }
+  .sig-name { font-family:var(--mono); font-size:8px; flex:1; color:var(--text); }
+  .sig-addr { font-family:var(--mono); font-size:7.5px; color:var(--dim); }
+  .sdot2 { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+  .dot-in  { background:var(--accent1); box-shadow:0 0 4px var(--accent1); }
+  .dot-out { background:var(--accent3); box-shadow:0 0 4px var(--accent3); }
+  .dot-com { background:var(--accent4); box-shadow:0 0 4px var(--accent4); }
+
+  /* ── FOOTER ── */
+  .footer { padding-top: 12px; border-top: 1px solid var(--border); }
+  .footer-info { font-family:var(--mono); font-size:8px; color:var(--dim); line-height:1.6; margin-bottom:8px; }
+  .footer-tags { display:flex; flex-wrap:wrap; gap:5px; }
+  .ft { font-family:var(--mono); font-size:8px; padding:2px 7px; border:1px solid var(--border); color:var(--dim); }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="tag">PYROBIX Project · 2026</div>
+    <h1>Vision-Based<br><span>Robotic</span> Sorting</h1>
+    <div class="subtitle">ABB IRB 1200 · MITSUBISHI FX5U · SICK InspectorP · DELTA VFD Conveyor</div>
+    <div class="badge-row">
+      <div class="badge badge-abb">ABB IRB 1200</div>
+      <div class="badge badge-plc">Mitsubishi FX5U</div>
+      <div class="badge badge-vis">SICK InspectorP</div>
+      <div class="badge badge-vfd">DELTA VFD Conveyor</div>
+    </div>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar">
+    <div class="status-item"><div class="sdot dot-g"></div>ROBOT <span class="sval">ONLINE</span></div>
+    <div class="status-item"><div class="sdot dot-b"></div>VISION <span class="sval">DETECTING</span></div>
+    <div class="status-item"><div class="sdot dot-o"></div>CONVEYOR <span class="sval">RUNNING</span></div>
+    <div class="status-item"><div class="sdot dot-g"></div>PLC <span class="sval">AUTO</span></div>
+    <div class="status-item">CYCLE <span class="sval" style="color:var(--accent4)">4.2s</span></div>
+    <div class="status-item">SORTED <span class="sval" style="color:var(--accent3)">1,247</span></div>
+  </div>
+
+  <!-- PROCESS FLOW -->
+  <div class="sec">01 — Process Flow</div>
+  <div class="flow-wrap">
+    <div class="flow-row">
+      <div class="flow-node c1" data-num="01"><span class="flow-icon">🏭</span><div class="flow-title">Part Entry</div><div class="flow-sub">VFD Conveyor<br>START signal</div></div>
+      <div class="flow-arrow">▶</div>
+      <div class="flow-node c2" data-num="02"><span class="flow-icon">👁️</span><div class="flow-title">Vision</div><div class="flow-sub">SICK InspectorP<br>Color + Position</div></div>
+      <div class="flow-arrow">▶</div>
+      <div class="flow-node c4" data-num="03"><span class="flow-icon">📡</span><div class="flow-title">PLC Logic</div><div class="flow-sub">Mitsubishi FX5U<br>Sort Decision</div></div>
+      <div class="flow-arrow">▶</div>
+      <div class="flow-node c3" data-num="04"><span class="flow-icon">🤖</span><div class="flow-title">Robot Pick</div><div class="flow-sub">ABB IRB 1200<br>RAPID Program</div></div>
+      <div class="flow-arrow">▶</div>
+      <div class="flow-node c5" data-num="05"><span class="flow-icon">📦</span><div class="flow-title">Sort & Place</div><div class="flow-sub">3 Bins by Color<br>Cycle Complete</div></div>
+    </div>
+  </div>
+
+  <!-- LADDER -->
+  <div class="sec">02 — PLC Ladder Diagram</div>
+  <div class="code-panel ladder">
+    <div class="code-header">
+      <span class="code-title">⚡ PLC Ladder Logic</span>
+      <span class="code-lang">IEC 61131-3 · LD</span>
+    </div>
+    <div class="code-body">
+      <div class="ladder-diagram">
+
+        <div class="rung-comment">(* RUNG 1: System Start Permissive *)</div>
+        <div class="rung">
+          <div class="rung-label">N:001</div>
+          <div class="rung-rail">
+            <div class="rail-line"></div>
+            <div class="wire" style="min-width:3px"></div>
+            <div class="sym">
+              <div class="sym-label">START_PB</div><div class="sym-addr">I0.0</div>
+              <svg viewBox="0 0 38 26"><line x1="0" y1="13" x2="9" y2="13" stroke="#ff6b2b" stroke-width="1.5"/><line x1="9" y1="5" x2="9" y2="21" stroke="#ff6b2b" stroke-width="1.5"/><line x1="29" y1="5" x2="29" y2="21" stroke="#ff6b2b" stroke-width="1.5"/><line x1="29" y1="13" x2="38" y2="13" stroke="#ff6b2b" stroke-width="1.5"/></svg>
+            </div>
+            <div class="wire"></div>
+            <div class="sym">
+              <div class="sym-label">E-STOP</div><div class="sym-addr">I0.1</div>
+              <svg viewBox="0 0 38 26"><line x1="0" y1="13" x2="9" y2="13" stroke="#ff6b2b" stroke-width="1.5"/><line x1="9" y1="5" x2="9" y2="21" stroke="#ff6b2b" stroke-width="1.5"/><line x1="29" y1="5" x2="29" y2="21" stroke="#ff6b2b" stroke-width="1.5"/><line x1="29" y1="13" x2="38" y2="13" stroke="#ff6b2b" stroke-width="1.5"/><line x1="9" y1="21" x2="29" y2="5" stroke="#ff6b2b" stroke-width="1.5"/></svg>
+            </div>
+            <div class="wire"></div>
+            <div class="sym">
+              <div class="sym-label">CONV_ON</div><div class="sym-addr">Q0.0</div>
+              <svg viewBox="0 0 34 26"><line x1="0" y1="13" x2="5" y2="13" stroke="#ff6b2b" stroke-width="1.5"/><circle cx="17" cy="13" r="10" fill="none" stroke="#ff6b2b" stroke-width="1.5"/><line x1="27" y1="13" x2="34" y2="13" stroke="#ff6b2b" stroke-width="1.5"/></svg>
+            </div>
+            <div class="wire" style="min-width:3px"></div>
+          </div>
+        </div>
+
+        <div class="rung-comment">(* RUNG 2: Vision Trigger when part at sensor *)</div>
+        <div class="rung">
+          <div class="rung-label">N:002</div>
+          <div class="rung-rail">
+            <div class="rail-line"></div>
+            <div class="wire" style="min-width:3px"></div>
+            <div class="sym">
+              <div class="sym-label">PART_SNS</div><div class="sym-addr">I0.2</div>
+              <svg viewBox="0 0 38 26"><line x1="0" y1="13" x2="9" y2="13" stroke="#ff6b2b" stroke-width="1.5"/><line x1="9" y1="5" x2="9" y2="21" stroke="#ff6b2b" stroke-width="1.5"/><line x1="29" y1="5" x2="29" y2="21" stroke="#ff6b2b" stroke-width="1.5"/><line x1="29" y1="13" x2="38" y2="13" stroke="#ff6b2b" stroke-width="1.5"/></svg>
+            </div>
+            <div class="wire"></div>
+            <div class="sym">
+              <div class="sym-label">VIS_TRIG</div><div class="sym-addr">Q0.1</div>
+              <svg viewBox="0 0 34 26"><line x1="0" y1="13" x2="5" y2="13" stroke="#ff6b2b" stroke-width="1.5"/><circle cx="17" cy="13" r="10" fill="none" stroke="#ff6b2b" stroke-width="1.5"/><text x="17" y="17" text-anchor="middle" fill="#ff6b2b" font-size="10" font-family="monospace">S</text><line x1="27" y1="13" x2="34" y2="13" stroke="#ff6b2b" stroke-width="1.5"/></svg>
+            </div>
+            <div class="wire"></div>
+            <div class="sym">
+              <div class="sym-label">CONV_OFF</div><div class="sym-addr">Q0.0</div>
+              <svg viewBox="0 0 34 26"><line x1="0" y1="13" x2="5" y2="13" stroke="#ff6b2b" stroke-width="1.5"/><circle cx="17" cy="13" r="10" fill="none" stroke="#ff6b2b" stroke-width="1.5"/><line x1="27" y1="13" x2="34" y2="13" stroke="#ff6b2b" stroke-width="1.5"/></svg>
+            </div>
+            <div class="wire" style="min-width:3px"></div>
+          </div>
+        </div>
+
+        <div class="rung-comment">(* RUNG 3: Vision OK → Robot Start *)</div>
+        <div class="rung">
+          <div class="rung-label">N:003</div>
+          <div class="rung-rail">
+            <div class="rail-line"></div>
+            <div class="wire" style="min-width:3px"></div>
+            <div class="sym">
+              <div class="sym-label">VIS_OK</div><div class="sym-addr">I0.3</div>
+              <svg viewBox="0 0 38 26"><line x1="0" y1="13" x2="9" y2="13" stroke="#ff6b2b" stroke-width="1.5"/><line x1="9" y1="5" x2="9" y2="21" stroke="#ff6b2b" stroke-width="1.5"/><line x1="29" y1="5" x2="29" y2="21" stroke="#ff6b2b" stroke-width="1.5"/><line x1="29" y1="13" x2="38" y2="13" stroke="#ff6b2b" stroke-width="1.5"/></svg>
+            </div>
+            <div class="wire"></div>
+            <div class="sym">
+              <div class="sym-label">ROB_BUSY</div><div class="sym-addr">I0.5</div>
+              <svg viewBox="0 0 38 26"><line x1="0" y1="13" x2="9" y2="13" stroke="#ff6b2b" stroke-width="1.5"/><line x1="9" y1="5" x2="9" y2="21" stroke="#ff6b2b" stroke-width="1.5"/><line x1="29" y1="5" x2="29" y2="21" stroke="#ff6b2b" stroke-width="1.5"/><line x1="29" y1="13" x2="38" y2="13" stroke="#ff6b2b" stroke-width="1.5"/><line x1="9" y1="21" x2="29" y2="5" stroke="#ff6b2b" stroke-width="1.5"/></svg>
+            </div>
+            <div class="wire"></div>
+            <div class="sym">
+              <div class="sym-label">ROB_STR</div><div class="sym-addr">Q0.2</div>
+              <svg viewBox="0 0 34 26"><line x1="0" y1="13" x2="5" y2="13" stroke="#ff6b2b" stroke-width="1.5"/><circle cx="17" cy="13" r="10" fill="none" stroke="#ff6b2b" stroke-width="1.5"/><text x="17" y="17" text-anchor="middle" fill="#ff6b2b" font-size="10" font-family="monospace">S</text><line x1="27" y1="13" x2="34" y2="13" stroke="#ff6b2b" stroke-width="1.5"/></svg>
+            </div>
+            <div class="wire" style="min-width:3px"></div>
+          </div>
+        </div>
+
+        <div class="rung-comment">(* RUNG 4: Robot Done → Reset + Restart Conveyor *)</div>
+        <div class="rung" style="margin-bottom:4px">
+          <div class="rung-label">N:004</div>
+          <div class="rung-rail">
+            <div class="rail-line"></div>
+            <div class="wire" style="min-width:3px"></div>
+            <div class="sym">
+              <div class="sym-label">ROB_DONE</div><div class="sym-addr">I0.6</div>
+              <svg viewBox="0 0 38 26"><line x1="0" y1="13" x2="9" y2="13" stroke="#ff6b2b" stroke-width="1.5"/><line x1="9" y1="5" x2="9" y2="21" stroke="#ff6b2b" stroke-width="1.5"/><line x1="29" y1="5" x2="29" y2="21" stroke="#ff6b2b" stroke-width="1.5"/><line x1="29" y1="13" x2="38" y2="13" stroke="#ff6b2b" stroke-width="1.5"/></svg>
+            </div>
+            <div class="wire"></div>
+            <div class="sym">
+              <div class="sym-label">ROB_STR</div><div class="sym-addr">Q0.2</div>
+              <svg viewBox="0 0 34 26"><line x1="0" y1="13" x2="5" y2="13" stroke="#ff6b2b" stroke-width="1.5"/><circle cx="17" cy="13" r="10" fill="none" stroke="#ff6b2b" stroke-width="1.5"/><text x="17" y="17" text-anchor="middle" fill="#ff6b2b" font-size="10" font-family="monospace">R</text><line x1="27" y1="13" x2="34" y2="13" stroke="#ff6b2b" stroke-width="1.5"/></svg>
+            </div>
+            <div class="wire"></div>
+            <div class="sym">
+              <div class="sym-label">CONV_ON</div><div class="sym-addr">Q0.0</div>
+              <svg viewBox="0 0 34 26"><line x1="0" y1="13" x2="5" y2="13" stroke="#ff6b2b" stroke-width="1.5"/><circle cx="17" cy="13" r="10" fill="none" stroke="#ff6b2b" stroke-width="1.5"/><line x1="27" y1="13" x2="34" y2="13" stroke="#ff6b2b" stroke-width="1.5"/></svg>
+            </div>
+            <div class="wire" style="min-width:3px"></div>
+          </div>
+        </div>
+
+        <div class="key-note">KEY: ─┤ ├─ NO Contact &nbsp;│&nbsp; ─┤/├─ NC Contact &nbsp;│&nbsp; ─( )─ Coil &nbsp;│&nbsp; ─(S)─ Set &nbsp;│&nbsp; ─(R)─ Reset</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RAPID CODE -->
+  <div class="code-panel rapid">
+    <div class="code-header">
+      <span class="code-title">🤖 ABB RAPID Program</span>
+      <span class="code-lang">RAPID · IRB 1200</span>
+    </div>
+    <div class="code-body">
+<pre>
+<span class="cm">! MODULE: SortingSystem · ABB IRB 1200 · RAPID v6</span>
+<span class="kw">MODULE</span> <span class="fn">SortingSystem</span>
+
+  <span class="type">PERS</span> <span class="type">tooldata</span>  <span class="var">tGripper</span> := [<span class="num">TRUE</span>,[[<span class="num">0</span>,<span class="num">0</span>,<span class="num">120</span>],[<span class="num">1</span>,<span class="num">0</span>,<span class="num">0</span>,<span class="num">0</span>]],...];
+  <span class="type">CONST</span> <span class="type">robtarget</span> <span class="var">pBin_RED</span>   := [[<span class="num">300</span>,<span class="num">-150</span>,<span class="num">80</span>],...];
+  <span class="type">CONST</span> <span class="type">robtarget</span> <span class="var">pBin_BLUE</span>  := [[<span class="num">300</span>,<span class="num">0</span>,<span class="num">80</span>],...];
+  <span class="type">CONST</span> <span class="type">robtarget</span> <span class="var">pBin_GREEN</span> := [[<span class="num">300</span>,<span class="num">150</span>,<span class="num">80</span>],...];
+  <span class="type">CONST</span> <span class="type">robtarget</span> <span class="var">pHome</span>      := [[<span class="num">0</span>,<span class="num">0</span>,<span class="num">400</span>],...];
+  <span class="type">VAR</span>   <span class="type">num</span>       <span class="var">nColor</span>     := <span class="num">0</span>;
+  <span class="type">VAR</span>   <span class="type">robtarget</span> <span class="var">pPick</span>;
+
+<span class="kw">PROC</span> <span class="fn">main</span>()
+  <span class="fn">MoveJ</span> <span class="var">pHome</span>, v400, z50, <span class="var">tGripper</span>;
+  <span class="kw">WHILE</span> <span class="num">TRUE</span> <span class="kw">DO</span>
+    <span class="fn">WaitDI</span> di_RobStart, <span class="num">1</span>;        <span class="cm">! Wait PLC start</span>
+    <span class="fn">SetDO</span>  do_RobBusy, <span class="num">1</span>;
+    <span class="var">nColor</span> := <span class="fn">GInput</span>(giColorCode);
+    <span class="var">pPick</span>  := <span class="fn">ReadVisionPos</span>();
+    <span class="fn">MoveJ</span> <span class="fn">Offs</span>(<span class="var">pPick</span>,<span class="num">0</span>,<span class="num">0</span>,<span class="num">100</span>), v600, z10, <span class="var">tGripper</span>;
+    <span class="fn">MoveL</span> <span class="var">pPick</span>, v80, fine, <span class="var">tGripper</span>;
+    <span class="fn">SetDO</span> do_GripClose, <span class="num">1</span>;
+    <span class="fn">WaitTime</span> <span class="num">0.3</span>;
+    <span class="fn">MoveL</span> <span class="fn">Offs</span>(<span class="var">pPick</span>,<span class="num">0</span>,<span class="num">0</span>,<span class="num">150</span>), v400, z20, <span class="var">tGripper</span>;
+    <span class="fn">SortToBin</span> <span class="var">nColor</span>;
+    <span class="fn">SetDO</span> do_RobBusy, <span class="num">0</span>;
+    <span class="fn">SetDO</span> do_RobDone, <span class="num">1</span>;
+    <span class="fn">WaitTime</span> <span class="num">0.1</span>;
+    <span class="fn">SetDO</span> do_RobDone, <span class="num">0</span>;
+  <span class="kw">ENDWHILE</span>
+<span class="kw">ENDPROC</span>
+
+<span class="kw">PROC</span> <span class="fn">SortToBin</span>(<span class="type">num</span> <span class="var">id</span>)
+  <span class="type">VAR</span> <span class="type">robtarget</span> <span class="var">pT</span>;
+  <span class="kw">TEST</span> <span class="var">id</span>
+    <span class="kw">CASE</span> <span class="num">1</span>: <span class="var">pT</span>:=<span class="var">pBin_RED</span>;
+    <span class="kw">CASE</span> <span class="num">2</span>: <span class="var">pT</span>:=<span class="var">pBin_BLUE</span>;
+    <span class="kw">CASE</span> <span class="num">3</span>: <span class="var">pT</span>:=<span class="var">pBin_GREEN</span>;
+    <span class="kw">DEFAULT</span>: <span class="fn">ErrLog</span> <span class="str">"Unknown color!"</span>;
+  <span class="kw">ENDTEST</span>
+  <span class="fn">MoveJ</span> <span class="fn">Offs</span>(<span class="var">pT</span>,<span class="num">0</span>,<span class="num">0</span>,<span class="num">120</span>), v600, z10, <span class="var">tGripper</span>;
+  <span class="fn">MoveL</span> <span class="var">pT</span>, v100, fine, <span class="var">tGripper</span>;
+  <span class="fn">SetDO</span> do_GripOpen, <span class="num">1</span>;
+  <span class="fn">WaitTime</span> <span class="num">0.2</span>;
+  <span class="fn">MoveL</span> <span class="fn">Offs</span>(<span class="var">pT</span>,<span class="num">0</span>,<span class="num">0</span>,<span class="num">120</span>), v400, z20, <span class="var">tGripper</span>;
+  <span class="fn">MoveJ</span> <span class="var">pHome</span>, v600, z50, <span class="var">tGripper</span>;
+<span class="kw">ENDPROC</span>
+
+<span class="kw">ENDMODULE</span>
+</pre>
+    </div>
+  </div>
+
+  <!-- SIGNAL MAP -->
+  <div class="sec">03 — I/O Signal Map</div>
+  <div class="signal-grid">
+    <div class="sig-group inputs">
+      <div class="sig-group-title">PLC Inputs</div>
+      <div class="sig-item"><div class="sdot2 dot-in"></div><span class="sig-name">START_PB</span><span class="sig-addr">I0.0</span></div>
+      <div class="sig-item"><div class="sdot2 dot-in"></div><span class="sig-name">E-STOP</span><span class="sig-addr">I0.1</span></div>
+      <div class="sig-item"><div class="sdot2 dot-in"></div><span class="sig-name">PART_SENSOR</span><span class="sig-addr">I0.2</span></div>
+      <div class="sig-item"><div class="sdot2 dot-in"></div><span class="sig-name">VISION_OK</span><span class="sig-addr">I0.3</span></div>
+      <div class="sig-item"><div class="sdot2 dot-in"></div><span class="sig-name">COLOR[2:0]</span><span class="sig-addr">I0.4–6</span></div>
+      <div class="sig-item"><div class="sdot2 dot-in"></div><span class="sig-name">ROB_BUSY</span><span class="sig-addr">I0.5</span></div>
+      <div class="sig-item"><div class="sdot2 dot-in"></div><span class="sig-name">ROB_DONE</span><span class="sig-addr">I0.6</span></div>
+    </div>
+    <div class="sig-group outputs">
+      <div class="sig-group-title">PLC Outputs</div>
+      <div class="sig-item"><div class="sdot2 dot-out"></div><span class="sig-name">CONV_START</span><span class="sig-addr">Q0.0</span></div>
+      <div class="sig-item"><div class="sdot2 dot-out"></div><span class="sig-name">VIS_TRIGGER</span><span class="sig-addr">Q0.1</span></div>
+      <div class="sig-item"><div class="sdot2 dot-out"></div><span class="sig-name">ROB_START</span><span class="sig-addr">Q0.2</span></div>
+      <div class="sig-item"><div class="sdot2 dot-out"></div><span class="sig-name">STATUS_LAMP</span><span class="sig-addr">Q0.3</span></div>
+      <div class="sig-item"><div class="sdot2 dot-out"></div><span class="sig-name">ALARM_OUT</span><span class="sig-addr">Q0.4</span></div>
+      <div class="sig-item"><div class="sdot2 dot-out"></div><span class="sig-name">SORT_BIN[2:0]</span><span class="sig-addr">Q0.5–7</span></div>
+    </div>
+    <div class="sig-group comms">
+      <div class="sig-group-title">Comms</div>
+      <div class="sig-item"><div class="sdot2 dot-com"></div><span class="sig-name">PLC ↔ ABB</span><span class="sig-addr">DeviceNet</span></div>
+      <div class="sig-item"><div class="sdot2 dot-com"></div><span class="sig-name">PLC ↔ SICK</span><span class="sig-addr">Ethernet/IP</span></div>
+      <div class="sig-item"><div class="sdot2 dot-com"></div><span class="sig-name">PLC ↔ VFD</span><span class="sig-addr">Modbus RTU</span></div>
+      <div class="sig-item"><div class="sdot2 dot-com"></div><span class="sig-name">Vision → PLC</span><span class="sig-addr">4×DI Color</span></div>
+      <div class="sig-item"><div class="sdot2 dot-com"></div><span class="sig-name">Vision → ABB</span><span class="sig-addr">X/Y via DSQC</span></div>
+      <div class="sig-item"><div class="sdot2 dot-com"></div><span class="sig-name">Speed Ref</span><span class="sig-addr">0–10V AO</span></div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer">
+    <div class="footer-info">
+      SYS REV 2.4 &nbsp;|&nbsp; IRB1200-7/0.7 &nbsp;|&nbsp; FX5U-32MR &nbsp;|&nbsp; InspectorP611<br>
+      RAPID v6 · IEC 61131-3 LD · DeviceNet · Ethernet/IP
+    </div>
+    <div class="footer-tags">
+      <div class="ft">#Automation</div><div class="ft">#Robotics</div><div class="ft">#PLC</div>
+      <div class="ft">#MachineVision</div><div class="ft">#Industry40</div><div class="ft">#ABB</div>
+      <div class="ft">#SmartFactory</div><div class="ft">#PYROBIXProject</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
